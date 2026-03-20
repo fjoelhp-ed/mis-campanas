@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Cloud, CloudOff, Plus, Trash2, Edit2, FileText, Image as ImageIcon, 
-  Video, Calendar as CalendarIcon, CheckCircle, ChevronLeft, ChevronRight, 
-  Save, Printer, Link as LinkIcon, Settings, Users, Layout, Eye,
-  Bold, Italic, Underline, List, ListOrdered, GripVertical, BarChart2,
-  AlertCircle, TrendingUp, Activity, Target, Flag, X,
+  Calendar as CalendarIcon, CheckCircle, ChevronLeft, ChevronRight, 
+  Save, Printer, Link as LinkIcon, Settings, Layout, 
+  GripVertical, BarChart2, AlertCircle, TrendingUp, Target, Flag, X,
   Share2, Copy, ExternalLink, ShieldCheck, MessageSquare, Columns, Menu,
-  Moon, Sun, CheckSquare, Download, FileBox, Instagram, Database, LogOut
+  Moon, Sun, CheckSquare, FileBox, Instagram, Database, LogOut
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
@@ -119,7 +118,6 @@ export default function App() {
   const [activeCampaign, setActiveCampaign] = useState(null);
   const [sharedToken, setSharedToken] = useState(null);
 
-  // Efecto para manejar URLs compartidas
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#shared=')) {
@@ -142,7 +140,6 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentView]);
 
-  // Efecto de Autenticación (Protegido contra falta de Firebase)
   useEffect(() => {
     if (configError || !auth) return;
 
@@ -194,7 +191,7 @@ export default function App() {
     try {
       await signOut(auth);
       setIsProfileModalOpen(false);
-      setAppData(initialData); // Limpiamos los datos locales por seguridad
+      setAppData(initialData);
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     }
@@ -202,9 +199,8 @@ export default function App() {
 
   useEffect(() => {
     if (syncStatus === 'synced') setSyncStatus('offline');
-  }, [appData]);
+  }, [appData, syncStatus]);
 
-  // --- RENDER CONDICIONAL ---
   if (configError) {
     return <FirebaseSetupScreen />;
   }
@@ -352,7 +348,7 @@ function FirebaseSetupScreen() {
         <div className="bg-gray-50 rounded-2xl p-6 text-left border border-gray-200 mb-8">
           <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Layout className="w-5 h-5 text-indigo-500"/> Pasos para solucionarlo:</h3>
           <ol className="list-decimal list-inside text-gray-700 space-y-3 font-medium">
-            <li>Ve a <a href="https://console.firebase.google.com/" target="_blank" className="text-indigo-600 hover:underline">console.firebase.google.com</a> y crea un proyecto.</li>
+            <li>Ve a <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">console.firebase.google.com</a> y crea un proyecto.</li>
             <li>En tu proyecto, haz clic en el ícono web <code>&lt;/&gt;</code> para crear una app.</li>
             <li>Copia el código que te da (donde dice <code>firebaseConfig</code>).</li>
             <li>Abre tu archivo <code className="bg-gray-200 px-2 py-1 rounded">src/App.jsx</code> y pega esos datos en la <strong>Línea 21</strong>.</li>
@@ -522,8 +518,8 @@ function SharedClientView({ token }) {
         {activeTab === 'objetivos' && <TabObjetivos campaign={campaign} isReadOnly={true} />}
         {activeTab === 'estrategias' && <TabEstrategias campaign={campaign} isReadOnly={true} />}
         {activeTab === 'deck' && <TabDeck campaign={campaign} updateCampaign={updateSharedCampaign} isReadOnly={true} isClient={true} onNavigateToDoc={() => setActiveTab('estrategias')} />}
-        {activeTab === 'calendario' && <TabCalendario campaign={campaign} isReadOnly={true} />}
-        {activeTab === 'publicadas' && <TabPublicadas campaign={campaign} isReadOnly={true} />}
+        {activeTab === 'calendario' && <TabCalendario campaign={campaign} />}
+        {activeTab === 'publicadas' && <TabPublicadas campaign={campaign} />}
         {activeTab === 'metricas' && <TabMetricas campaign={campaign} appData={mockAppDataForPrint} isReadOnly={true} />}
         
         {/* CRÉDITOS EN VISTA CLIENTE */}
@@ -799,7 +795,7 @@ function CampaignWorkspace({ project, campaign, appData, setAppData, onBack }) {
   const copyToClipboard = () => {
     navigator.clipboard.writeText(shareLink).then(() => {
         alert("¡Enlace copiado al portapapeles!");
-    }).catch(err => {
+    }).catch(() => {
         const textArea = document.createElement("textarea");
         textArea.value = shareLink;
         document.body.appendChild(textArea);
@@ -875,10 +871,10 @@ function CampaignWorkspace({ project, campaign, appData, setAppData, onBack }) {
           <TabDeck campaign={currentCampaign} updateCampaign={updateCampaignData} onNavigateToDoc={navigateToDoc} />
         )}
         {activeTab === 'calendario' && (
-          <TabCalendario campaign={currentCampaign} updateCampaign={updateCampaignData} />
+          <TabCalendario campaign={currentCampaign} />
         )}
         {activeTab === 'publicadas' && (
-          <TabPublicadas campaign={currentCampaign} updateCampaign={updateCampaignData}/>
+          <TabPublicadas campaign={currentCampaign} />
         )}
         {activeTab === 'metricas' && (
           <TabMetricas campaign={currentCampaign} updateCampaign={updateCampaignData} appData={appData} />
@@ -1724,7 +1720,7 @@ function TabDeck({ campaign, updateCampaign, onNavigateToDoc, isReadOnly = false
 }
 
 // --- TAB 3: CALENDARIO ---
-function TabCalendario({ campaign, isReadOnly = false }) {
+function TabCalendario({ campaign }) {
   const posts = campaign.posts || [];
   const today = new Date();
   const [currentDate, setCurrentDate] = useState(new Date(today.getFullYear(), today.getMonth(), 1));
@@ -1840,7 +1836,7 @@ function TabCalendario({ campaign, isReadOnly = false }) {
 }
 
 // --- TAB 4: PUBLICADAS (Repositorio) ---
-function TabPublicadas({ campaign, updateCampaign, isReadOnly = false }) {
+function TabPublicadas({ campaign }) {
   const publishedPosts = (campaign.posts || []).filter(p => p.status === 'Publicado');
   
   return (
