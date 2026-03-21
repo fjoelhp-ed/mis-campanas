@@ -5,7 +5,8 @@ import {
   Save, Printer, Link as LinkIcon, Settings, Layout, 
   GripVertical, BarChart2, AlertCircle, TrendingUp, Target, Flag, X,
   Share2, Copy, ExternalLink, ShieldCheck, MessageSquare, Columns, Menu,
-  Moon, Sun, CheckSquare, FileBox, Instagram, Database, LogOut
+  Moon, Sun, CheckSquare, FileBox, Instagram, Database, LogOut,
+  Briefcase, Compass, Palette, BookOpen, Swords, UserSquare, Users
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
@@ -16,7 +17,6 @@ import { getFirestore, doc, setDoc, getDoc } from 'firebase/firestore';
 // =====================================================================
 const isLocal = typeof __firebase_config === 'undefined';
 const localFirebaseConfig = {
-  // Pega aquí los datos que te dé Firebase (Paso 2):
   apiKey: "AIzaSyAaGg6ADF5KKsIfoT62QJ_OmVi_cjXotn0",
   authDomain: "mycampaigns-8b19f.firebaseapp.com",
   projectId: "mycampaigns-8b19f",
@@ -53,6 +53,18 @@ const initialData = {
     {
       id: 'p1',
       name: 'Proyecto de Ejemplo',
+      type: 'Político',
+      status: 'Activo',
+      briefUrl: 'https://drive.google.com/ejemplo',
+      identity: { 
+        mission: 'Mejorar la calidad de vida a través de la gestión transparente.', 
+        vision: 'Ser el gobierno municipal más innovador del estado.', 
+        values: 'Honestidad, Cercanía, Innovación', 
+        voiceTone: 'Cercano, firme y esperanzador', 
+        targetAudience: 'Jóvenes de 18 a 35 años desencantados con la política tradicional y jefas de familia preocupadas por la seguridad.',
+        colors: ['#10b981', '#1e293b'] 
+      },
+      swot: { strengths: ['Candidato carismático', 'Estructura territorial sólida'], weaknesses: ['Presupuesto limitado en digital', 'Poco tiempo de preparación'], opportunities: ['Descontento social con la oposición', 'Voto joven indeciso'], threats: ['Campaña sucia en redes sociales', 'Desinformación'] },
       campaigns: [
         {
           id: 'c1',
@@ -110,14 +122,22 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [syncStatus, setSyncStatus] = useState('offline');
   const [appData, setAppData] = useState(initialData);
-  const [isDarkMode, setIsDarkMode] = useState(false);
-  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   
+  // Memoria del Modo Oscuro
+  const [isDarkMode, setIsDarkMode] = useState(() => localStorage.getItem('theme') === 'dark');
+  
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
   const [currentView, setCurrentView] = useState('projects'); 
   const [activeProject, setActiveProject] = useState(null);
   const [activeCampaign, setActiveCampaign] = useState(null);
   const [sharedToken, setSharedToken] = useState(null);
 
+  // Efecto para guardar preferencia de modo oscuro
+  useEffect(() => {
+    localStorage.setItem('theme', isDarkMode ? 'dark' : 'light');
+  }, [isDarkMode]);
+
+  // Efecto para manejar URLs compartidas
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.startsWith('#shared=')) {
@@ -140,6 +160,7 @@ export default function App() {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, [currentView]);
 
+  // Efecto de Autenticación
   useEffect(() => {
     if (configError || !auth) return;
 
@@ -201,20 +222,18 @@ export default function App() {
     if (syncStatus === 'synced') setSyncStatus('offline');
   }, [appData, syncStatus]);
 
-  if (configError) {
-    return <FirebaseSetupScreen />;
-  }
+  if (configError) return <FirebaseSetupScreen />;
 
   if (!isAuthReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
+      <div className={`min-h-screen flex items-center justify-center ${isDarkMode ? 'bg-gray-950' : 'bg-gray-50'}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
       </div>
     );
   }
 
   if (!user && currentView !== 'shared_client') {
-    return <AuthScreen onLoginAnonymously={() => signInAnonymously(auth)} />;
+    return <AuthScreen onLoginAnonymously={() => signInAnonymously(auth)} isDarkMode={isDarkMode} />;
   }
 
   return (
@@ -320,7 +339,7 @@ export default function App() {
           ) : currentView === 'projects' ? (
              <ProjectsDashboard appData={appData} setAppData={setAppData} onSelectProject={(p) => { setActiveProject(p); setCurrentView('campaigns'); }} />
           ) : currentView === 'campaigns' ? (
-             <CampaignsList project={activeProject} appData={appData} setAppData={setAppData} onBack={() => setCurrentView('projects')} onSelectCampaign={(c) => { setActiveCampaign(c); setCurrentView('workspace'); }} />
+             <ProjectWorkspace project={activeProject} appData={appData} setAppData={setAppData} onBack={() => setCurrentView('projects')} onSelectCampaign={(c) => { setActiveCampaign(c); setCurrentView('workspace'); }} />
           ) : (
              <CampaignWorkspace project={activeProject} campaign={activeCampaign} appData={appData} setAppData={setAppData} onBack={() => { setCurrentView('campaigns'); setActiveCampaign(null); }} />
           )}
@@ -331,44 +350,9 @@ export default function App() {
 }
 
 // ==========================================
-// COMPONENTE: PANTALLA DE ALERTA FIREBASE
+// PANTALLA DE AUTENTICACIÓN
 // ==========================================
-function FirebaseSetupScreen() {
-  return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 selection:bg-indigo-200">
-      <div className="bg-white p-8 md:p-12 rounded-3xl shadow-xl border border-gray-200 w-full max-w-2xl text-center">
-        <div className="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
-          <Database className="w-10 h-10" />
-        </div>
-        <h1 className="text-3xl font-black text-gray-900 mb-4">¡Tu aplicación necesita una Base de Datos!</h1>
-        <p className="text-gray-600 text-lg mb-8 leading-relaxed">
-          Has instalado el código correctamente, pero para que los datos de tus usuarios y clientes se guarden en la nube, debes conectar tu proyecto a <strong>Firebase</strong> (Es 100% gratuito).
-        </p>
-        
-        <div className="bg-gray-50 rounded-2xl p-6 text-left border border-gray-200 mb-8">
-          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2"><Layout className="w-5 h-5 text-indigo-500"/> Pasos para solucionarlo:</h3>
-          <ol className="list-decimal list-inside text-gray-700 space-y-3 font-medium">
-            <li>Ve a <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-indigo-600 hover:underline">console.firebase.google.com</a> y crea un proyecto.</li>
-            <li>En tu proyecto, haz clic en el ícono web <code>&lt;/&gt;</code> para crear una app.</li>
-            <li>Copia el código que te da (donde dice <code>firebaseConfig</code>).</li>
-            <li>Abre tu archivo <code className="bg-gray-200 px-2 py-1 rounded">src/App.jsx</code> y pega esos datos en la <strong>Línea 21</strong>.</li>
-            <li>Ve a <strong>Authentication</strong> y habilita "Google" y "Anónimo".</li>
-            <li>Ve a <strong>Firestore Database</strong> y créala en "Modo Prueba".</li>
-          </ol>
-        </div>
-
-        <p className="text-sm text-gray-400 font-bold tracking-widest uppercase">
-          Una vez que pegues el código, esta pantalla desaparecerá.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// PANTALLA DE AUTENTICACIÓN (LOGIN)
-// ==========================================
-function AuthScreen({ onLoginAnonymously }) {
+function AuthScreen({ onLoginAnonymously, isDarkMode }) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleGoogleLogin = async () => {
@@ -384,7 +368,7 @@ function AuthScreen({ onLoginAnonymously }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 flex flex-col justify-center items-center p-4 selection:bg-emerald-200">
+    <div className={`min-h-screen flex flex-col justify-center items-center p-4 selection:bg-emerald-200 ${isDarkMode ? 'dark bg-gray-950' : 'bg-gray-50'}`}>
       <div className="bg-white dark:bg-gray-900 p-8 sm:p-10 rounded-3xl shadow-xl border border-gray-100 dark:border-gray-800 w-full max-w-md flex flex-col items-center animate-in fade-in zoom-in duration-300">
          <img src="./icon.png" alt="Logo MisCampañas" className="w-20 h-20 rounded-2xl shadow-md mb-6 object-cover" />
          <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 tracking-tight">MisCampañas</h1>
@@ -407,7 +391,6 @@ function AuthScreen({ onLoginAnonymously }) {
            {isLoading ? 'Iniciando...' : 'Entrar de Prueba (Invitado)'}
          </button>
          
-         {/* CRÉDITOS */}
          <div className="mt-8 pt-6 border-t border-gray-100 dark:border-gray-800 w-full text-center flex flex-col items-center">
            <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3">Diseñado por</p>
            <a 
@@ -419,6 +402,25 @@ function AuthScreen({ onLoginAnonymously }) {
              <Instagram className="w-5 h-5"/> Francisco Joel
            </a>
          </div>
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// COMPONENTE: PANTALLA DE ALERTA FIREBASE
+// ==========================================
+function FirebaseSetupScreen() {
+  return (
+    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center p-6 selection:bg-indigo-200">
+      <div className="bg-white p-8 md:p-12 rounded-3xl shadow-xl border border-gray-200 w-full max-w-2xl text-center">
+        <div className="w-20 h-20 bg-amber-100 text-amber-500 rounded-full flex items-center justify-center mx-auto mb-6">
+          <Database className="w-10 h-10" />
+        </div>
+        <h1 className="text-3xl font-black text-gray-900 mb-4">¡Tu aplicación necesita una Base de Datos!</h1>
+        <p className="text-gray-600 text-lg mb-8 leading-relaxed">
+          Revisa la consola para configurar Firebase.
+        </p>
       </div>
     </div>
   );
@@ -542,7 +544,16 @@ function ProjectsDashboard({ appData, setAppData, onSelectProject }) {
   const addProject = (e) => {
     e.preventDefault();
     if (!newProjName.trim()) return;
-    const newProj = { id: Math.random().toString(), name: newProjName, campaigns: [] };
+    const newProj = { 
+      id: Math.random().toString(), 
+      name: newProjName, 
+      type: 'Empresa',
+      status: 'Activo', // Estado inicial
+      briefUrl: '',
+      identity: { mission: '', vision: '', values: '', voiceTone: '', targetAudience: '', colors: [] }, // Agregado targetAudience
+      swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] },
+      campaigns: [] 
+    };
     setAppData({ ...appData, projects: [...appData.projects, newProj] });
     setNewProjName('');
   };
@@ -571,12 +582,23 @@ function ProjectsDashboard({ appData, setAppData, onSelectProject }) {
 
         {appData.projects.map(proj => (
           <div key={proj.id} className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-6 flex flex-col hover:shadow-xl hover:-translate-y-1 transition-all cursor-pointer relative overflow-hidden group h-64" onClick={() => onSelectProject(proj)}>
+            
+            {/* Badge de Estado del Proyecto */}
+            <div className="absolute top-4 left-4">
+              <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider
+                ${proj.status === 'Activo' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-400' : 
+                  proj.status === 'Pausado' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' : 
+                  'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'}`}>
+                {proj.status || 'Activo'}
+              </span>
+            </div>
+
             <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
               <button onClick={(e) => { e.stopPropagation(); setAppData({ ...appData, projects: appData.projects.filter(p => p.id !== proj.id) }); }} className="bg-red-50 dark:bg-red-900/30 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors">
                 <Trash2 className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 flex flex-col justify-center items-center text-center">
+            <div className="flex-1 flex flex-col justify-center items-center text-center mt-4">
                <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-700 rounded-2xl flex items-center justify-center text-3xl font-black text-gray-400 dark:text-gray-500 mb-6 shadow-inner">
                  {proj.name.substring(0,2).toUpperCase()}
                </div>
@@ -607,36 +629,95 @@ function ProjectsDashboard({ appData, setAppData, onSelectProject }) {
   );
 }
 
-function CampaignsList({ project, appData, setAppData, onBack, onSelectCampaign }) {
+function ProjectWorkspace({ project, appData, setAppData, onBack, onSelectCampaign }) {
+  const [activeTab, setActiveTab] = useState('campañas');
+  const currentProject = appData.projects.find(p => p.id === project.id) || project;
+
+  const updateProject = (updates) => {
+    const updatedProjects = appData.projects.map(p => p.id === project.id ? { ...p, ...updates } : p);
+    setAppData({ ...appData, projects: updatedProjects });
+  };
+
+  const tabs = [
+    { id: 'campañas', label: 'Campañas', icon: <Briefcase className="w-4 h-4"/> },
+    { id: 'perfil', label: 'Perfil e Identidad', icon: <UserSquare className="w-4 h-4"/> },
+    { id: 'foda', label: 'Análisis FODA', icon: <Swords className="w-4 h-4"/> }
+  ];
+
+  return (
+    <div className="flex flex-col h-full w-full bg-[#F8FAFC] dark:bg-gray-950 relative transition-colors">
+       <div className="bg-white dark:bg-gray-900 px-6 py-5 border-b dark:border-gray-800 shadow-sm z-10 shrink-0">
+         <button onClick={onBack} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-4 flex items-center gap-1 font-medium">
+           <ChevronLeft className="w-4 h-4" /> Volver a Proyectos
+         </button>
+         <div className="flex items-center justify-between mb-6 gap-4">
+           <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gray-900 dark:bg-emerald-600 rounded-2xl flex items-center justify-center text-2xl font-black text-white shadow-lg shrink-0">
+                 {currentProject.name.substring(0,2).toUpperCase()}
+              </div>
+              <div>
+                 <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-900/30 px-2 py-1 rounded-md mb-1 inline-block border border-emerald-100 dark:border-emerald-800">
+                   {currentProject.type || 'Proyecto'}
+                 </span>
+                 <h1 className="text-3xl font-black text-gray-900 dark:text-white leading-none">{currentProject.name}</h1>
+              </div>
+           </div>
+           
+           {/* Selector de Estado del Proyecto */}
+           <div>
+              <select 
+                value={currentProject.status || 'Activo'} 
+                onChange={e => updateProject({ status: e.target.value })}
+                className={`text-sm font-bold px-4 py-2 rounded-xl outline-none cursor-pointer border shadow-sm transition-colors
+                  ${currentProject.status === 'Activo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800' : 
+                    currentProject.status === 'Pausado' ? 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800' : 
+                    'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-800 dark:text-gray-400 dark:border-gray-700'}`}
+              >
+                <option value="Activo">🟢 Proyecto Activo</option>
+                <option value="Pausado">🟡 Proyecto Pausado</option>
+                <option value="Completado">⚪ Proyecto Completado</option>
+              </select>
+           </div>
+         </div>
+         <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+            {tabs.map(tab => (
+              <button 
+                key={tab.id} 
+                onClick={() => setActiveTab(tab.id)} 
+                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-bold whitespace-nowrap transition-all border border-transparent
+                  ${activeTab === tab.id ? 'bg-gray-900 dark:bg-emerald-600 text-white shadow-md' : 'bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-200 dark:hover:border-gray-600'}`}
+              >
+                {tab.icon} {tab.label}
+              </button>
+            ))}
+         </div>
+       </div>
+       
+       <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
+          {activeTab === 'campañas' && <TabCampañas currentProject={currentProject} updateProject={updateProject} onSelectCampaign={onSelectCampaign} />}
+          {activeTab === 'perfil' && <TabPerfil currentProject={currentProject} updateProject={updateProject} />}
+          {activeTab === 'foda' && <TabFODA currentProject={currentProject} updateProject={updateProject} />}
+       </div>
+    </div>
+  );
+}
+
+// --- SUB-TABS DEL PROYECTO ---
+
+function TabCampañas({ currentProject, updateProject, onSelectCampaign }) {
   const [newCampName, setNewCampName] = useState('');
   const [editingCampaign, setEditingCampaign] = useState(null);
-  const currentProject = appData.projects.find(p => p.id === project.id) || project;
 
   const addCampaign = (e) => {
     e.preventDefault();
     if (!newCampName.trim()) return;
     const newCamp = { id: Math.random().toString(), name: newCampName, description: '', objectives: [], documents: [], posts: [] };
-    const updatedProjects = appData.projects.map(p => p.id === project.id ? { ...p, campaigns: [...(p.campaigns||[]), newCamp] } : p);
-    setAppData({ ...appData, projects: updatedProjects });
+    updateProject({ campaigns: [...(currentProject.campaigns||[]), newCamp] });
     setNewCampName('');
   };
 
   return (
-    <div className="p-6 sm:p-10 max-w-7xl mx-auto w-full overflow-y-auto">
-      <button onClick={onBack} className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white mb-8 font-medium transition-colors">
-        <div className="bg-white dark:bg-gray-800 p-1 rounded-md shadow-sm border dark:border-gray-700"><ChevronLeft className="w-4 h-4" /></div> Proyectos
-      </button>
-
-      <div className="flex items-center gap-5 mb-10">
-         <div className="w-20 h-20 bg-gray-900 dark:bg-emerald-600 rounded-2xl flex items-center justify-center text-3xl font-black text-white shadow-xl">
-            {currentProject.name.substring(0,2).toUpperCase()}
-         </div>
-         <div>
-            <h1 className="text-4xl font-black text-gray-900 dark:text-white">{currentProject.name}</h1>
-            <p className="text-gray-500 dark:text-gray-400 text-lg mt-1">Selecciona o crea una campaña para este proyecto.</p>
-         </div>
-      </div>
-      
+    <div className="max-w-7xl mx-auto w-full">
       <div className="bg-white dark:bg-gray-900 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 p-3 mb-8 flex gap-4 items-center focus-within:ring-2 focus-within:ring-emerald-500 transition-all">
         <div className="bg-emerald-50 dark:bg-emerald-900/30 p-3 rounded-xl ml-2">
           <Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -647,22 +728,20 @@ function CampaignsList({ project, appData, setAppData, onBack, onSelectCampaign 
             className="border-none outline-none p-2 flex-1 text-lg bg-transparent dark:text-white placeholder-gray-400"
             value={newCampName} onChange={(e) => setNewCampName(e.target.value)}
           />
-          <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-200 dark:shadow-none">Crear</button>
+          <button type="submit" className="bg-emerald-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-emerald-700 transition-all shadow-md shadow-emerald-200 dark:shadow-none">Crear Campaña</button>
         </form>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {(currentProject.campaigns || []).map(camp => (
           <div key={camp.id} onClick={() => onSelectCampaign(camp)} className="bg-white dark:bg-gray-900 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-800 cursor-pointer hover:shadow-xl hover:-translate-y-1 transition-all group flex flex-col justify-between h-48 relative overflow-hidden">
-            
             <div className="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
               <button onClick={(e) => { e.stopPropagation(); setEditingCampaign(camp); }} className="bg-blue-50 dark:bg-blue-900/30 text-blue-500 p-2 rounded-lg hover:bg-blue-500 hover:text-white transition-colors" title="Editar Campaña">
                 <Edit2 className="w-4 h-4" />
               </button>
               <button onClick={(e) => { 
                 e.stopPropagation(); 
-                const updatedProjects = appData.projects.map(p => p.id === project.id ? { ...p, campaigns: p.campaigns.filter(c => c.id !== camp.id) } : p);
-                setAppData({ ...appData, projects: updatedProjects });
+                updateProject({ campaigns: currentProject.campaigns.filter(c => c.id !== camp.id) });
               }} className="bg-red-50 dark:bg-red-900/30 text-red-500 p-2 rounded-lg hover:bg-red-500 hover:text-white transition-colors" title="Eliminar Campaña">
                 <Trash2 className="w-4 h-4" />
               </button>
@@ -683,9 +762,14 @@ function CampaignsList({ project, appData, setAppData, onBack, onSelectCampaign 
             </div>
           </div>
         ))}
+        {(currentProject.campaigns || []).length === 0 && (
+          <div className="col-span-full py-16 flex flex-col items-center justify-center text-gray-400 border-2 border-dashed border-gray-200 dark:border-gray-800 rounded-3xl">
+             <Briefcase className="w-16 h-16 mb-4 text-gray-300 dark:text-gray-700"/>
+             <p className="text-lg font-medium">No hay campañas en este proyecto aún.</p>
+          </div>
+        )}
       </div>
 
-      {/* MODAL DE EDICIÓN DE CAMPAÑA */}
       {editingCampaign && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm">
           <div className="bg-white dark:bg-gray-900 rounded-3xl shadow-2xl border border-gray-200 dark:border-gray-800 w-full max-w-md p-6 animate-in fade-in zoom-in duration-200">
@@ -703,8 +787,7 @@ function CampaignsList({ project, appData, setAppData, onBack, onSelectCampaign 
                  <textarea value={editingCampaign.description || ''} onChange={e => setEditingCampaign({...editingCampaign, description: e.target.value})} rows="3" className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-xl dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-emerald-500 outline-none resize-none" placeholder="Añade una descripción a esta campaña..."></textarea>
                </div>
                <button onClick={() => {
-                 const updatedProjects = appData.projects.map(p => p.id === project.id ? { ...p, campaigns: p.campaigns.map(c => c.id === editingCampaign.id ? editingCampaign : c) } : p);
-                 setAppData({ ...appData, projects: updatedProjects });
+                 updateProject({ campaigns: currentProject.campaigns.map(c => c.id === editingCampaign.id ? editingCampaign : c) });
                  setEditingCampaign(null);
                }} className="w-full bg-emerald-600 text-white py-3 rounded-xl font-bold hover:bg-emerald-700 transition-colors shadow-md mt-4">
                  Guardar Cambios
@@ -713,6 +796,202 @@ function CampaignsList({ project, appData, setAppData, onBack, onSelectCampaign 
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function TabPerfil({ currentProject, updateProject }) {
+  const identity = currentProject.identity || { mission: '', vision: '', values: '', voiceTone: '', targetAudience: '', colors: [] };
+  const [newColor, setNewColor] = useState('');
+
+  const updateIdentity = (field, value) => {
+    updateProject({ identity: { ...identity, [field]: value } });
+  };
+
+  const addColor = (e) => {
+    e.preventDefault();
+    if (/^#[0-9A-F]{6}$/i.test(newColor) && !identity.colors.includes(newColor)) {
+      updateIdentity('colors', [...identity.colors, newColor]);
+      setNewColor('');
+    } else {
+      alert("Introduce un código Hexadecimal válido (Ej: #FF0000)");
+    }
+  };
+
+  const removeColor = (col) => {
+    updateIdentity('colors', identity.colors.filter(c => c !== col));
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto w-full space-y-8 pb-10">
+       
+       <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-6 shadow-sm">
+         <h3 className="text-lg font-black text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+           <Compass className="w-5 h-5 text-indigo-500"/> Información General
+         </h3>
+         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tipo de Cliente</label>
+              <select value={currentProject.type || 'Empresa'} onChange={e => updateProject({ type: e.target.value })} className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-sm">
+                <option value="Empresa">Empresa / Corporativo</option>
+                <option value="Político">Candidato / Político</option>
+                <option value="Gobierno">Institución de Gobierno</option>
+                <option value="Figura Pública">Figura Pública / Artista</option>
+                <option value="ONG">ONG / Asociación</option>
+              </select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Enlace al Brief General (Drive, Notion, etc.)</label>
+              <div className="flex gap-2">
+                <input type="text" value={currentProject.briefUrl || ''} onChange={e => updateProject({ briefUrl: e.target.value })} placeholder="https://..." className="flex-1 border border-gray-200 dark:border-gray-700 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-sm" />
+                {currentProject.briefUrl && (
+                  <a href={currentProject.briefUrl} target="_blank" rel="noopener noreferrer" className="bg-indigo-50 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 p-3 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/50 transition-colors flex items-center justify-center" title="Abrir Brief">
+                    <ExternalLink className="w-5 h-5"/>
+                  </a>
+                )}
+              </div>
+            </div>
+            <div className="md:col-span-3 border-t border-gray-100 dark:border-gray-800 pt-6 mt-2">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-2"><Users className="w-4 h-4 text-indigo-500"/> Público Objetivo / Buyer Persona</label>
+              <textarea value={identity.targetAudience || ''} onChange={e => updateIdentity('targetAudience', e.target.value)} rows="2" placeholder="¿A quién le estamos hablando? (Ej: Jóvenes de 18 a 35 años, clase media, preocupados por la seguridad...)" className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500 resize-none text-sm font-medium"></textarea>
+            </div>
+         </div>
+       </div>
+
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+         <div className="lg:col-span-2 bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-6 shadow-sm flex flex-col gap-6">
+            <h3 className="text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-emerald-500"/> Plataforma Filosófica
+            </h3>
+            
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Misión / Propósito Principal</label>
+              <textarea value={identity.mission} onChange={e => updateIdentity('mission', e.target.value)} rows="2" placeholder="¿Qué hacemos y para quién?" className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 resize-none text-sm font-medium"></textarea>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Visión / Meta a Largo Plazo</label>
+              <textarea value={identity.vision} onChange={e => updateIdentity('vision', e.target.value)} rows="2" placeholder="¿A dónde queremos llegar?" className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 resize-none text-sm font-medium"></textarea>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Valores Fundamentales</label>
+              <textarea value={identity.values} onChange={e => updateIdentity('values', e.target.value)} rows="2" placeholder="Ej: Honestidad, Innovación, Trabajo en equipo..." className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 resize-none text-sm font-medium"></textarea>
+            </div>
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Tono de Comunicación / Eje Discursivo</label>
+              <input type="text" value={identity.voiceTone} onChange={e => updateIdentity('voiceTone', e.target.value)} placeholder="Ej: Cercano, empático, firme, institucional..." className="w-full border border-gray-200 dark:border-gray-700 p-3 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-emerald-500 transition-all font-medium text-sm" />
+            </div>
+         </div>
+
+         <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-6 shadow-sm">
+            <h3 className="text-lg font-black text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+              <Palette className="w-5 h-5 text-pink-500"/> Colores de Marca
+            </h3>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mb-6">Añade los códigos hexadecimales de la identidad visual de tu cliente o candidato.</p>
+            
+            <form onSubmit={addColor} className="flex gap-2 mb-6">
+              <div className="relative flex-1">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 font-bold">#</span>
+                <input 
+                  type="text" 
+                  value={newColor.replace('#','')} 
+                  onChange={e => setNewColor('#' + e.target.value)} 
+                  maxLength="6"
+                  placeholder="FFFFFF" 
+                  className="w-full border border-gray-200 dark:border-gray-700 p-3 pl-7 rounded-xl bg-gray-50 dark:bg-gray-800 dark:text-white outline-none focus:ring-2 focus:ring-pink-500 text-sm font-bold uppercase tracking-widest" 
+                />
+              </div>
+              <button type="submit" className="bg-gray-900 dark:bg-pink-600 text-white p-3 rounded-xl hover:bg-gray-800 dark:hover:bg-pink-500 transition-colors"><Plus className="w-5 h-5"/></button>
+            </form>
+
+            <div className="flex flex-wrap gap-3">
+               {identity.colors.length === 0 && <span className="text-sm text-gray-400">Sin colores definidos.</span>}
+               {identity.colors.map(col => (
+                 <div key={col} className="group relative flex items-center gap-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-1.5 pr-3 rounded-full shadow-sm">
+                   <div className="w-6 h-6 rounded-full shadow-inner border border-gray-200/50" style={{ backgroundColor: col }}></div>
+                   <span className="text-xs font-bold text-gray-600 dark:text-gray-300 uppercase">{col}</span>
+                   <button onClick={() => removeColor(col)} className="absolute -top-1 -right-1 bg-red-500 text-white p-0.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md"><X className="w-3 h-3"/></button>
+                 </div>
+               ))}
+            </div>
+         </div>
+       </div>
+    </div>
+  );
+}
+
+function TabFODA({ currentProject, updateProject }) {
+  const swot = currentProject.swot || { strengths: [], weaknesses: [], opportunities: [], threats: [] };
+
+  const updateQuadrant = (type, newArray) => {
+    updateProject({ swot: { ...swot, [type]: newArray } });
+  };
+
+  return (
+    <div className="max-w-6xl mx-auto w-full space-y-6 pb-10">
+      <div className="mb-4">
+         <h2 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+           <div className="bg-amber-100 dark:bg-amber-900/30 p-2 rounded-xl text-amber-600 dark:text-amber-400"><Target className="w-6 h-6"/></div>
+           Análisis de Contexto (FODA)
+         </h2>
+         <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Evalúa la situación actual para definir estrategias precisas de comunicación.</p>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <FodaQuadrant title="Fortalezas" subtitle="Atributos positivos internos" type="strengths" items={swot.strengths} updateItems={(arr) => updateQuadrant('strengths', arr)} color="text-emerald-700 dark:text-emerald-400" bg="bg-emerald-50 dark:bg-emerald-900/10" border="border-emerald-200 dark:border-emerald-800/50" />
+        <FodaQuadrant title="Oportunidades" subtitle="Factores externos a favor" type="opportunities" items={swot.opportunities} updateItems={(arr) => updateQuadrant('opportunities', arr)} color="text-blue-700 dark:text-blue-400" bg="bg-blue-50 dark:bg-blue-900/10" border="border-blue-200 dark:border-blue-800/50" />
+        <FodaQuadrant title="Debilidades" subtitle="Carencias o riesgos internos" type="weaknesses" items={swot.weaknesses} updateItems={(arr) => updateQuadrant('weaknesses', arr)} color="text-amber-700 dark:text-amber-400" bg="bg-amber-50 dark:bg-amber-900/10" border="border-amber-200 dark:border-amber-800/50" />
+        <FodaQuadrant title="Amenazas" subtitle="Riesgos del entorno exterior" type="threats" items={swot.threats} updateItems={(arr) => updateQuadrant('threats', arr)} color="text-rose-700 dark:text-rose-400" bg="bg-rose-50 dark:bg-rose-900/10" border="border-rose-200 dark:border-rose-800/50" />
+      </div>
+    </div>
+  );
+}
+
+function FodaQuadrant({ title, subtitle, items, updateItems, color, bg, border }) {
+  const [newItem, setNewItem] = useState('');
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    if (newItem.trim()) {
+      updateItems([...items, newItem.trim()]);
+      setNewItem('');
+    }
+  };
+
+  const handleRemove = (idx) => {
+    const arr = [...items];
+    arr.splice(idx, 1);
+    updateItems(arr);
+  };
+
+  return (
+    <div className={`p-6 rounded-3xl border ${border} ${bg} shadow-sm flex flex-col h-full min-h-[300px]`}>
+       <div className="mb-6">
+         <h3 className={`text-xl font-black ${color}`}>{title}</h3>
+         <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">{subtitle}</span>
+       </div>
+       
+       <div className="flex-1 space-y-2 overflow-y-auto mb-4">
+         {items.length === 0 && <p className="text-sm text-gray-400 font-medium italic opacity-70">Aún no hay elementos añadidos.</p>}
+         {items.map((item, idx) => (
+           <div key={idx} className="flex justify-between items-start gap-2 bg-white dark:bg-gray-900 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-800 group">
+             <span className="text-sm font-medium text-gray-800 dark:text-gray-200 leading-tight">{item}</span>
+             <button onClick={() => handleRemove(idx)} className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"><X className="w-4 h-4"/></button>
+           </div>
+         ))}
+       </div>
+
+       <form onSubmit={handleAdd} className="relative mt-auto">
+         <input 
+           type="text" 
+           value={newItem} 
+           onChange={e => setNewItem(e.target.value)} 
+           placeholder={`Añadir a ${title.toLowerCase()}...`}
+           className="w-full bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 p-3 pr-10 rounded-xl text-sm font-medium outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-gray-600 dark:text-white shadow-sm"
+         />
+         <button type="submit" className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ${color}`}>
+           <Plus className="w-4 h-4"/>
+         </button>
+       </form>
     </div>
   );
 }
