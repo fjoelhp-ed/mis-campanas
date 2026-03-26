@@ -6,7 +6,7 @@ import {
   GripVertical, BarChart2, AlertCircle, TrendingUp, Target, Flag, X,
   Share2, Copy, ExternalLink, ShieldCheck, MessageSquare, Columns, Menu,
   Moon, Sun, CheckSquare, FileBox, Instagram, Database, LogOut,
-  Briefcase, Compass, Palette, BookOpen, Swords, UserSquare, Users
+  Briefcase, Compass, Palette, BookOpen, Swords, UserSquare, Users, ListOrdered
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
@@ -65,6 +65,18 @@ const initialData = {
         colors: ['#10b981', '#1e293b'] 
       },
       swot: { strengths: ['Candidato carismático', 'Estructura territorial sólida'], weaknesses: ['Presupuesto limitado en digital', 'Poco tiempo de preparación'], opportunities: ['Descontento social con la oposición', 'Voto joven indeciso'], threats: ['Campaña sucia en redes sociales', 'Desinformación'] },
+      decalogue: [
+        'El candidato o la marca siempre es el protagonista del mensaje principal.',
+        'Nunca responder a ataques estando enojados ni sin una estrategia previa.',
+        'Mantener un tono cercano, empático y humano en todo momento.',
+        'Toda publicación debe tener un propósito y una invitación a la acción (CTA claro).',
+        'La forma es fondo: ortografía, iluminación y diseño deben ser impecables.',
+        'Priorizar el contenido en video corto, dinámico y siempre subtitulado.',
+        'Comunicar soluciones, historias y propuestas, no solo quejas del entorno.',
+        'Conectar primero con la emoción del elector/cliente, luego con la razón.',
+        'Aprovechar el "timing" para subirse a tendencias de forma inteligente.',
+        'Medir, analizar resultados, no suponer, y ajustar la estrategia constantemente.'
+      ],
       campaigns: [
         {
           id: 'c1',
@@ -552,6 +564,18 @@ function ProjectsDashboard({ appData, setAppData, onSelectProject }) {
       briefUrl: '',
       identity: { mission: '', vision: '', values: '', voiceTone: '', targetAudience: '', colors: [] }, // Agregado targetAudience
       swot: { strengths: [], weaknesses: [], opportunities: [], threats: [] },
+      decalogue: [
+        'El candidato o la marca siempre es el protagonista del mensaje principal.',
+        'Nunca responder a ataques estando enojados ni sin una estrategia previa.',
+        'Mantener un tono cercano, empático y humano en todo momento.',
+        'Toda publicación debe tener un propósito y una invitación a la acción (CTA claro).',
+        'La forma es fondo: ortografía, iluminación y diseño deben ser impecables.',
+        'Priorizar el contenido en video corto, dinámico y siempre subtitulado.',
+        'Comunicar soluciones, historias y propuestas, no solo quejas del entorno.',
+        'Conectar primero con la emoción del elector/cliente, luego con la razón.',
+        'Aprovechar el "timing" para subirse a tendencias de forma inteligente.',
+        'Medir, analizar resultados, no suponer, y ajustar la estrategia constantemente.'
+      ],
       campaigns: [] 
     };
     setAppData({ ...appData, projects: [...appData.projects, newProj] });
@@ -641,7 +665,8 @@ function ProjectWorkspace({ project, appData, setAppData, onBack, onSelectCampai
   const tabs = [
     { id: 'campañas', label: 'Campañas', icon: <Briefcase className="w-4 h-4"/> },
     { id: 'perfil', label: 'Perfil e Identidad', icon: <UserSquare className="w-4 h-4"/> },
-    { id: 'foda', label: 'Análisis FODA', icon: <Swords className="w-4 h-4"/> }
+    { id: 'foda', label: 'Análisis FODA', icon: <Swords className="w-4 h-4"/> },
+    { id: 'decalogo', label: 'Decálogo', icon: <ListOrdered className="w-4 h-4"/> }
   ];
 
   return (
@@ -697,6 +722,7 @@ function ProjectWorkspace({ project, appData, setAppData, onBack, onSelectCampai
           {activeTab === 'campañas' && <TabCampañas currentProject={currentProject} updateProject={updateProject} onSelectCampaign={onSelectCampaign} />}
           {activeTab === 'perfil' && <TabPerfil currentProject={currentProject} updateProject={updateProject} />}
           {activeTab === 'foda' && <TabFODA currentProject={currentProject} updateProject={updateProject} />}
+          {activeTab === 'decalogo' && <TabDecalogo currentProject={currentProject} updateProject={updateProject} />}
        </div>
     </div>
   );
@@ -992,6 +1018,67 @@ function FodaQuadrant({ title, subtitle, items, updateItems, color, bg, border }
            <Plus className="w-4 h-4"/>
          </button>
        </form>
+    </div>
+  );
+}
+
+function TabDecalogo({ currentProject, updateProject }) {
+  // Reglas por defecto en caso de proyectos antiguos que no tenían decálogo
+  const defaultRules = [
+    'El candidato o la marca siempre es el protagonista del mensaje principal.',
+    'Nunca responder a ataques estando enojados ni sin una estrategia previa.',
+    'Mantener un tono cercano, empático y humano en todo momento.',
+    'Toda publicación debe tener un propósito y una invitación a la acción (CTA claro).',
+    'La forma es fondo: ortografía, iluminación y diseño deben ser impecables.',
+    'Priorizar el contenido en video corto, dinámico y siempre subtitulado.',
+    'Comunicar soluciones, historias y propuestas, no solo quejas del entorno.',
+    'Conectar primero con la emoción del elector/cliente, luego con la razón.',
+    'Aprovechar el "timing" para subirse a tendencias de forma inteligente.',
+    'Medir, analizar resultados, no suponer, y ajustar la estrategia constantemente.'
+  ];
+
+  // Nos aseguramos de tener siempre un array de 10 posiciones
+  let decalogue = currentProject.decalogue || defaultRules;
+  if (decalogue.length < 10) {
+    decalogue = [...decalogue, ...Array(10 - decalogue.length).fill('')];
+  }
+
+  const updateRule = (index, value) => {
+    const newDecalogue = [...decalogue];
+    newDecalogue[index] = value;
+    updateProject({ decalogue: newDecalogue });
+  };
+
+  return (
+    <div className="max-w-5xl mx-auto w-full space-y-6 pb-10">
+      <div className="mb-6 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+         <div>
+           <h2 className="text-2xl font-black text-gray-900 dark:text-white flex items-center gap-3">
+             <div className="bg-indigo-100 dark:bg-indigo-900/30 p-2 rounded-xl text-indigo-600 dark:text-indigo-400">
+               <ListOrdered className="w-6 h-6"/>
+             </div>
+             Decálogo de Comunicación
+           </h2>
+           <p className="text-gray-500 dark:text-gray-400 mt-2 font-medium">Los 10 mandamientos rectores de este proyecto. Reglas inquebrantables para el equipo.</p>
+         </div>
+      </div>
+
+      <div className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-3xl p-6 md:p-8 shadow-sm space-y-4">
+         {decalogue.map((rule, idx) => (
+            <div key={idx} className="flex gap-4 items-start bg-gray-50 dark:bg-gray-800/50 p-4 rounded-2xl border border-transparent focus-within:border-indigo-200 dark:focus-within:border-indigo-800 transition-colors">
+               <div className="w-10 h-10 shrink-0 bg-indigo-100 dark:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 font-black text-xl flex items-center justify-center rounded-xl shadow-sm">
+                  {idx + 1}
+               </div>
+               <textarea
+                 value={rule}
+                 onChange={(e) => updateRule(idx, e.target.value)}
+                 placeholder={`Escribe la directriz o regla #${idx + 1}...`}
+                 className="w-full bg-transparent border-none outline-none resize-none text-gray-800 dark:text-gray-200 font-medium text-base leading-relaxed pt-2 focus:ring-0 placeholder-gray-400"
+                 rows="2"
+               />
+            </div>
+         ))}
+      </div>
     </div>
   );
 }
